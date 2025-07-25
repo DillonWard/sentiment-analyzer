@@ -2,6 +2,9 @@ import tarfile
 import os
 from src.data.archive import Archive
 from src.common.utils import export_data_to_json, import_processed_json
+import re
+from bs4 import BeautifulSoup
+import html
 
 
 def unzip_data_extract_contents():
@@ -39,9 +42,9 @@ def unzip_data_extract_contents():
             if file.name in non_review_files:
                 contents = extract_vectorize_file_contents(file, tar_ref)
                 if file.name.endswith("imdb.vocab"):
-                    imdb_vocab = {"name": "imdb_vocab", "contents": contents}
+                    imdb_vocab = contents
                 elif file.name.endswith("imdbEr.txt"):
-                    imdb_expected_rating = {"name": "imdb_expected_rating", "contents": contents}
+                    imdb_expected_rating = contents
             elif file.name.endswith(".feat"):
                 contents = extract_vectorize_file_contents(file, tar_ref)
                 if "train" in file.name:
@@ -68,9 +71,12 @@ def unzip_data_extract_contents():
     return test_archive, train_archive, unsup_archive, imdb_vocab, imdb_expected_rating
 
 
-def extract_vectorize_file_contents(file, tar_ref):
+def extract_vectorize_file_contents(file, tar_ref, string=False):
     file_obj = tar_ref.extractfile(file)
-    contents = file_obj.read().decode("utf-8").splitlines() if file_obj else None
+    if string:
+        contents = file_obj.read().decode("utf-8") if file_obj else None
+    else:
+        contents = file_obj.read().decode("utf-8").splitlines() if file_obj else None
     return contents
 
 
@@ -80,8 +86,21 @@ def handle_review_files(file, tar_ref):
     name_part = os.path.splitext(base)[0]
     id, rating = name_part.split("_")
     file_obj = tar_ref.extractfile(file)
-    contents = file_obj.read().decode("utf-8").splitlines() if file_obj else None
-    return {"id": id, "type": type, "rating": rating, "contents": contents}
+    contents = file_obj.read().decode("utf-8") if file_obj else None
+    clean_contents = clean_review_text(contents) if contents else None
+    return {"id": id, "type": type, "rating": rating, "contents": clean_contents}
+
+
+def clean_review_text(text):
+    text = html.unescape(text)
+    soup = BeautifulSoup(text, "html.parser")
+    clean_text = soup.get_text(separator=" ", strip=True)
+    clean_text = re.sub(r'\s+', ' ', clean_text)
+    clean_text = clean_text.replace("’", "'").replace("“", '"').replace("”", '"')
+    clean_text = clean_text.lower()
+    clean_text = clean_text.encode("ascii", "ignore").decode()
+    clean_text = clean_text.strip()
+    return clean_text
 
 
 def extract_files_from_directory(members, files):
