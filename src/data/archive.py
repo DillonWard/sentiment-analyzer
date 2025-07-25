@@ -16,7 +16,7 @@ class Archive:
     def to_dict(self):
         return {
             "type": self.type,
-            "labeled_bow": self.labeled_bow,
+            # "labeled_bow": self.labeled_bow,
             "reviews": self.reviews,
             "size": self.size,
         }
