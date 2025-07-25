@@ -2,6 +2,7 @@ import json
 import os
 import gzip
 import joblib
+from scipy.sparse import save_npz, load_npz
 
 def export_data_to_json(data, file_name):
     project_root = os.path.dirname(
@@ -31,6 +32,7 @@ def import_processed_json(file_name):
     
     return data
 
+
 def export_models(data, file_name):
     project_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,6 +41,7 @@ def export_models(data, file_name):
 
     import joblib
     joblib.dump(data, path)
+
 
 def import_models(file_name):
     project_root = os.path.dirname(
@@ -51,3 +54,25 @@ def import_models(file_name):
 
     data = joblib.load(path)
     return data
+
+
+def export_processed_data(matrix, filename):
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    processed_dir = os.path.join(project_root, "data", "processed")
+    os.makedirs(processed_dir, exist_ok=True)
+
+    path = os.path.join(processed_dir, filename)
+    save_npz(path, matrix)
+
+
+def import_processed_data(filename):
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    processed_dir = os.path.join(project_root, "data", "processed")
+    path = os.path.join(processed_dir, filename)
+    if not os.path.exists(path):
+        return None
+    return load_npz(path)
