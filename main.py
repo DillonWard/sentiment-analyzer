@@ -4,8 +4,8 @@ from src.model.predict_model import predict_sentiment_tfidf, predict_sentiment_b
 
 def main():
     test_archive, train_archive, unsup_archive, imdb_vocab, imdb_expected_rating = unzip_data_extract_contents()
-    # train_tfidf_logreg(test_archive, train_archive, imdb_vocab, imdb_expected_rating)
-    # train_bow_logreg(test_archive, train_archive, imdb_vocab)
+    train_tfidf_logreg(test_archive, train_archive, imdb_vocab, imdb_expected_rating)
+    train_bow_logreg(test_archive, train_archive, imdb_vocab)
 
     sample_text = "this movie was mid"
     print("TFIDF Prediction:", predict_sentiment_tfidf(sample_text))

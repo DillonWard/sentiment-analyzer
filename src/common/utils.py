@@ -4,34 +4,44 @@ import gzip
 import joblib
 from scipy.sparse import save_npz, load_npz
 
-def export_data_to_json(data, file_name):
+def export_data_to_json(data, file_name, is_json=False):
     project_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
-    if not file_name.endswith('.gz'):
-        file_name += '.gz'
+    if is_json:
+        if not file_name.endswith('.json'):
+            file_name += '.json'
+    else:
+        if not file_name.endswith('.gz'):
+            file_name += '.gz'
     path = os.path.join(project_root, "data", "processed", file_name)
 
     with gzip.open(path, 'wt', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         
 
-def import_processed_json(file_name):
+def import_processed_json(file_name, is_json=False):
     project_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
-    if not file_name.endswith('.gz'):
-        file_name += '.gz'
-    path = os.path.join(project_root, "data", "processed", file_name)
-
-    if not os.path.exists(path):
-        return None
-
-    with gzip.open(path, 'rt', encoding='utf-8') as f:
-        data = json.load(f)
-    
-    return data
-
+    if is_json:
+        if not file_name.endswith('.json'):
+            file_name += '.json'
+        path = os.path.join(project_root, "data", "processed", file_name)
+        if not os.path.exists(path):
+            return None
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+    else:
+        if not file_name.endswith('.gz'):
+            file_name += '.gz'
+        path = os.path.join(project_root, "data", "processed", file_name)
+        if not os.path.exists(path):
+            return None
+        with gzip.open(path, 'rt', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
 
 def export_models(data, file_name):
     project_root = os.path.dirname(
