@@ -1,11 +1,15 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
-from src.common.utils import export_models, import_models, import_processed_json, export_data_to_json
+from src.common.utils import export_models, import_models, import_processed_json, export_data_to_json, get_project_root
 from src.data.processor import bow_dicts_to_matrix, parse_bow_line
 from scipy.sparse import csr_matrix
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from datasets import Dataset
+import torch
+import os
 
 # Function to train a TF-IDF model using Logistic Regression
 def train_tfidf_logreg(test_data, train_data, vocab_list, imdb_expected_rating=None):
@@ -36,9 +40,8 @@ def train_tfidf_logreg(test_data, train_data, vocab_list, imdb_expected_rating=N
 
     clf_with_best_params = import_models('tfidf_sentiment_model_with_params.joblib')
     if clf_with_best_params is None:
-        # Pass X_train (list of strings), not X_train_vec
         best_params = tune_tfidf_logreg(X_train, y_train, vocab_list)
-        clf_with_best_params = LogisticRegression(**best_params, max_iter=1000)
+        clf_with_best_params = LogisticRegression(**best_params)
         clf_with_best_params.fit(X_train_vec, y_train)
         export_models(clf_with_best_params, 'tfidf_sentiment_model_with_params.joblib')
 
@@ -78,7 +81,7 @@ def train_bow_logreg(test_archive, train_archive, vocab_list):
     clf_with_best_params = import_models('bow_sentiment_model_with_params.joblib')
     if clf_with_best_params is None:
         best_params = tune_bow_logreg(X_train, y_train)
-        clf_with_best_params = LogisticRegression(**best_params, max_iter=1000)
+        clf_with_best_params = LogisticRegression(**best_params)
         clf_with_best_params.fit(X_train, y_train)
         export_models(clf_with_best_params, 'bow_sentiment_model_with_params.joblib')
     y_pred = clf.predict(X_test)
@@ -96,18 +99,15 @@ def tune_tfidf_logreg(X_train, y_train, vocab_list):
         ('clf', LogisticRegression(max_iter=1000))
     ])
     param_grid = {
-        'tfidf__ngram_range': [(1,1), (1,2), (1,3), (2,2), (2,3)],
-        'tfidf__max_features': [1000, 5000, 10000, 20000, 50000],
-        'tfidf__min_df': [1, 2, 5, 10],
-        'tfidf__max_df': [0.7, 0.8, 0.9, 1.0],
+        'tfidf__ngram_range': [(1,1), (1,2), (1,3)],
+        'tfidf__max_features': [5000, 10000, 20000],
+        'tfidf__min_df': [1, 2, 5],
         'tfidf__stop_words': [None, 'english'],
-        'tfidf__sublinear_tf': [True, False],
-        'tfidf__norm': ['l1', 'l2'],
-        'clf__C': [0.01, 0.1, 1, 10, 100],
-        'clf__solver': ['lbfgs', 'liblinear', 'saga'],
-        'clf__penalty': ['l2', 'none'],
+        'clf__C': [0.1, 1, 10],
+        'clf__solver': ['lbfgs', 'liblinear'],
+        'clf__penalty': ['l2'],
         'clf__class_weight': [None, 'balanced'],
-        'clf__max_iter': [500, 1000, 2000]
+        'clf__max_iter': [500, 1000]
     }
     grid = GridSearchCV(pipeline, param_grid, cv=3, n_jobs=-1, verbose=1)
     grid.fit(X_train, y_train)
@@ -124,14 +124,14 @@ def tune_bow_logreg(X_train, y_train):
         return best_params
 
     param_grid = {
-        'C': [0.001, 0.01, 0.1, 1, 10, 100],
-        'max_iter': [100, 500, 1000, 2000],
-        'solver': ['lbfgs', 'liblinear', 'saga', 'newton-cg'],
-        'penalty': ['l1', 'l2', 'none'],
+        'C': [0.1, 1, 10],
+        'max_iter': [500, 1000],
+        'solver': ['lbfgs', 'liblinear'],
+        'penalty': ['l2'],
         'class_weight': [None, 'balanced'],
-        'fit_intercept': [True, False],
-        'warm_start': [True, False],
-        'tol': [1e-4, 1e-3, 1e-2]
+        'fit_intercept': [True],
+        'warm_start': [False],
+        'tol': [1e-4, 1e-3]
     }
     clf = LogisticRegression()
     grid = GridSearchCV(clf, param_grid, cv=3, n_jobs=-1, verbose=1)
@@ -141,3 +141,58 @@ def tune_bow_logreg(X_train, y_train):
 
     export_data_to_json(bow_best_params, 'bow_best_params', is_json=True)
     return bow_best_params
+
+
+def prepare_bert_dataset(archive):
+    texts = [r['contents'] for r in archive.reviews]
+    labels = [0 if r['type'] == 'neg' else 1 for r in archive.reviews]
+    return Dataset.from_dict({"text": texts, "label": labels})
+
+
+def tokenize_function(examples, tokenizer):
+    return tokenizer(examples["text"], truncation=True, padding="max_length")
+
+
+def import_finetuned_bert():
+    model_dir = os.path.join(get_project_root(), "models", "bert_finetuned")
+    if not os.path.exists(model_dir):
+        return None, None
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+    return model, tokenizer
+
+def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
+    model, tokenizer = import_finetuned_bert()
+    if model is None or tokenizer is None:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        train_dataset = prepare_bert_dataset(train_archive)
+        test_dataset = prepare_bert_dataset(test_archive)
+
+        train_dataset = train_dataset.map(lambda x: tokenize_function(x, tokenizer), batched=True)
+        test_dataset = test_dataset.map(lambda x: tokenize_function(x, tokenizer), batched=True)
+        train_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
+        test_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
+
+        model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+
+        bert_model_dir = os.path.join(get_project_root(), "models", "bert_finetuned")
+
+        training_args = TrainingArguments(
+            output_dir=bert_model_dir,
+            num_train_epochs=2,
+            per_device_train_batch_size=8,
+            logging_steps=50,
+            save_steps=100,
+            report_to=[],
+        )
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=test_dataset,
+        )
+
+        trainer.train()
+        model.save_pretrained(bert_model_dir)
+        tokenizer.save_pretrained(bert_model_dir)
+    return model, tokenizer

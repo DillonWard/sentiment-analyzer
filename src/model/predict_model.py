@@ -1,6 +1,8 @@
 from src.common.utils import import_models
 from src.data.processor import clean_review_text, bow_dicts_to_matrix
 from src.common.utils import import_models
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
 
 
 def predict_sentiment_tfidf(text):
@@ -36,3 +38,14 @@ def text_to_bow_dict(text, vocab_list):
         if idx is not None:
             bow[idx] = bow.get(idx, 0) + 1
     return bow
+
+
+def predict_sentiment_bert(text, model_dir="./bert_finetuned"):
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+        probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+        sentiment = torch.argmax(probs, dim=1).item()
+    return sentiment, probs.squeeze().tolist()

@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import html
 import numpy as np
 from scipy.sparse import lil_matrix
+from datasets import Dataset
 
 def unzip_data_extract_contents():
     project_root = os.path.dirname(
@@ -143,3 +144,12 @@ def parse_bow_line(line):
             idx, val = part.split(':')
             bow[int(idx)] = int(val)
     return bow
+
+def prepare_bert_dataset(archive):
+    texts = [r['contents'] for r in archive.reviews]
+    labels = [0 if r['type'] == 'neg' else 1 for r in archive.reviews]
+    return Dataset.from_dict({"text": texts, "label": labels})
+
+
+def tokenize_function(examples, tokenizer):
+    return tokenizer(examples["text"], truncation=True, padding="max_length")
