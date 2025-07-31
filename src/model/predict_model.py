@@ -3,6 +3,7 @@ from src.data.processor import clean_review_text, bow_dicts_to_matrix
 from src.common.utils import import_models
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
+import os
 
 
 def predict_sentiment_tfidf(text):
@@ -17,8 +18,8 @@ def predict_sentiment_tfidf(text):
 
 
 
-def predict_sentiment_bow(text, vocab_list):
-    clf = import_models('bow_sentiment_model.joblib')
+def predict_sentiment_bow(text, vocab_list, with_params=False):
+    clf = import_models('bow_sentiment_model_with_params.joblib') if with_params else import_models('bow_sentiment_model.joblib')
     if clf is None:
         raise ValueError("BoW model not found. Train the model first.")
 
@@ -40,9 +41,11 @@ def text_to_bow_dict(text, vocab_list):
     return bow
 
 
-def predict_sentiment_bert(text, model_dir="./bert_finetuned"):
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
-    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+def predict_sentiment_bert(text, with_params=False):
+    from src.model.train_model import import_finetuned_bert
+    model, tokenizer = import_finetuned_bert(with_params=with_params)
+    if model is None or tokenizer is None:
+        raise ValueError("BERT model not found. Train the model first.")
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
     with torch.no_grad():
         outputs = model(**inputs)

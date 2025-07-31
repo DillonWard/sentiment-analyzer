@@ -8,16 +8,17 @@ def main():
     train_bow_logreg(test_archive, train_archive, imdb_vocab)
     finetune_bert(train_archive, test_archive)
 
-    sample_text = "this movie was mid"
-    print("TFIDF Prediction:", predict_sentiment_tfidf(sample_text))
-    print("BoW Prediction:", predict_sentiment_bow(sample_text, imdb_vocab))
-    print("BERT Prediction:", predict_sentiment_bert(sample_text))
+    reviews = [
+        "this movie was great and the acting was amazing",
+        "this movie was bad and the acting was terrible",]
+    for review in reviews:
+        print("TFIDF Prediction:", predict_sentiment_tfidf(review))
+        print("BoW Prediction:", predict_sentiment_bow(review, imdb_vocab))
+        print("BERT Prediction:", predict_sentiment_bert(review))
 
-    sample_text = "it wasnt bad"
-    print("TFIDF Prediction:", predict_sentiment_tfidf(sample_text))
-    print("BoW Prediction:", predict_sentiment_bow(sample_text, imdb_vocab))
-    print("BERT Prediction:", predict_sentiment_bert(sample_text))
-
+        print('With best params:')
+        print("TFIDF Prediction:", predict_sentiment_tfidf(review, with_params=True))
+        print("BoW Prediction:", predict_sentiment_bow(review, imdb_vocab, with_params=True))
 
 main()
 

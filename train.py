@@ -18,10 +18,10 @@ def train():
         future_bow = executor.submit(
             train_bow_logreg, test_archive, train_archive, imdb_vocab
         )
-        future_bert = executor.submit(finetune_bert, train_archive, test_archive)
+        # future_bert = executor.submit(finetune_bert, train_archive, test_archive)
         future_tfidf.result()
         future_bow.result()
-        future_bert.result()
+        # future_bert.result()
 
 
 train()
