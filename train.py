@@ -1,5 +1,5 @@
 from src.data.processor import unzip_data_extract_contents
-from src.model.train_model import train_bow_logreg, train_tfidf_logreg, finetune_bert
+from src.model.train_model import train_bow_logreg, train_tfidf_logreg#, finetune_bert
 from concurrent.futures import ThreadPoolExecutor
 
 

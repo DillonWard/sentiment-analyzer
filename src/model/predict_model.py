@@ -6,16 +6,20 @@ import torch
 import os
 
 
-def predict_sentiment_tfidf(text):
-    vectorizer = import_models('vectorizer.joblib')
-    clf = import_models('sentiment_model.joblib')
+def predict_sentiment_tfidf(text, with_params=False):
+    if with_params:
+        clf = import_models('tfidf_sentiment_model_with_params.joblib')
+        vectorizer = import_models('vectorizer.joblib')
+    else:
+        clf = import_models('sentiment_model.joblib')
+        vectorizer = import_models('vectorizer.joblib')
+    
     if vectorizer is None or clf is None:
         raise ValueError("Model or vectorizer not found. Train the model first.")
     clean_text = clean_review_text(text)
     X = vectorizer.transform([clean_text])
     pred = clf.predict(X)
     return pred[0]
-
 
 
 def predict_sentiment_bow(text, vocab_list, with_params=False):

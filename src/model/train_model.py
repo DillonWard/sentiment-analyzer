@@ -169,7 +169,11 @@ def tune_bow_logreg(X_train, y_train):
 
 
 def import_finetuned_bert(with_params=False):
-    model_dir = os.path.join(get_project_root(), "models", "bert_finetuned_with_params" if with_params else "bert_finetuned")
+    model_dir = os.path.join(
+        get_project_root(),
+        "models",
+        "bert_finetuned_with_params" if with_params else "bert_finetuned",
+    )
     if not os.path.exists(model_dir):
         return None, None
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
@@ -184,16 +188,26 @@ def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         train_dataset = prepare_bert_dataset(train_archive)
         test_dataset = prepare_bert_dataset(test_archive)
-        train_dataset = train_dataset.map(lambda x: tokenize_function(x, tokenizer), batched=True)
-        test_dataset = test_dataset.map(lambda x: tokenize_function(x, tokenizer), batched=True)
-        train_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
-        test_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
+        train_dataset = train_dataset.map(
+            lambda x: tokenize_function(x, tokenizer), batched=True
+        )
+        test_dataset = test_dataset.map(
+            lambda x: tokenize_function(x, tokenizer), batched=True
+        )
+        train_dataset.set_format(
+            type="torch", columns=["input_ids", "attention_mask", "label"]
+        )
+        test_dataset.set_format(
+            type="torch", columns=["input_ids", "attention_mask", "label"]
+        )
 
-        model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_name, num_labels=2
+        )
         bert_model_dir = os.path.join(get_project_root(), "models", "bert_finetuned")
         training_args = TrainingArguments(
             output_dir=bert_model_dir,
-            num_train_epochs=1,
+            num_train_epochs=2,
             per_device_train_batch_size=8,
             learning_rate=5e-5,
             logging_steps=50,
@@ -212,21 +226,33 @@ def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
 
     model_with_params, tokenizer_with_params = import_finetuned_bert(with_params=True)
     if model_with_params is None or tokenizer_with_params is None:
-        best_params = tune_bert_hyperparameters(train_archive, model_name)
+        best_params = tune_bert_hyperparameters(train_archive, test_archive, model_name)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         train_dataset = prepare_bert_dataset(train_archive)
         test_dataset = prepare_bert_dataset(test_archive)
-        train_dataset = train_dataset.map(lambda x: tokenize_function(x, tokenizer), batched=True)
-        test_dataset = test_dataset.map(lambda x: tokenize_function(x, tokenizer), batched=True)
-        train_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
-        test_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'label'])
+        train_dataset = train_dataset.map(
+            lambda x: tokenize_function(x, tokenizer), batched=True
+        )
+        test_dataset = test_dataset.map(
+            lambda x: tokenize_function(x, tokenizer), batched=True
+        )
+        train_dataset.set_format(
+            type="torch", columns=["input_ids", "attention_mask", "label"]
+        )
+        test_dataset.set_format(
+            type="torch", columns=["input_ids", "attention_mask", "label"]
+        )
 
         num_train_epochs = best_params.get("num_train_epochs", 1)
         per_device_train_batch_size = best_params.get("per_device_train_batch_size", 8)
         learning_rate = best_params.get("learning_rate", 5e-5)
 
-        model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
-        bert_model_dir_with_params = os.path.join(get_project_root(), "models", "bert_finetuned_with_params")
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_name, num_labels=2
+        )
+        bert_model_dir_with_params = os.path.join(
+            get_project_root(), "models", "bert_finetuned_with_params"
+        )
         training_args = TrainingArguments(
             output_dir=bert_model_dir_with_params,
             num_train_epochs=num_train_epochs,
@@ -246,21 +272,27 @@ def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
         model.save_pretrained(bert_model_dir_with_params)
         tokenizer.save_pretrained(bert_model_dir_with_params)
 
-def tune_bert_hyperparameters(train_archive, model_name="bert-base-uncased"):
+
+def tune_bert_hyperparameters(train_archive, test_archive, model_name="bert-base-uncased"):
     best_params = import_processed_json("bert_best_params.json", is_json=True)
     if best_params:
         return best_params
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     train_dataset = prepare_bert_dataset(train_archive)
+    test_dataset = prepare_bert_dataset(test_archive)
     train_dataset = train_dataset.map(
+        lambda x: tokenize_function(x, tokenizer), batched=True
+    )
+    test_dataset = test_dataset.map(
         lambda x: tokenize_function(x, tokenizer), batched=True
     )
     train_dataset.set_format(
         type="torch", columns=["input_ids", "attention_mask", "label"]
     )
-
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    test_dataset.set_format(
+        type="torch", columns=["input_ids", "attention_mask", "label"]
+    )
 
     training_args = TrainingArguments(
         output_dir="./bert_hyperparam_search",
@@ -268,29 +300,26 @@ def tune_bert_hyperparameters(train_archive, model_name="bert-base-uncased"):
         per_device_train_batch_size=8,
         logging_steps=50,
         report_to=[],
-        evaluation_strategy="no",
     )
-
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-    )
-
     def model_init():
         return AutoModelForSequenceClassification.from_pretrained(
             model_name, num_labels=2
         )
+    trainer = Trainer(
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=test_dataset,
+        model_init=model_init,
+    )
 
     best_run = trainer.hyperparameter_search(
         direction="maximize",
         n_trials=10,
-        hp_space=lambda _: {
-            "learning_rate": [5e-5, 3e-5, 2e-5],
-            "num_train_epochs": [1, 2, 3],
-            "per_device_train_batch_size": [8, 16],
+        hp_space=lambda trial: {
+            "learning_rate": trial.suggest_float("learning_rate", 2e-5, 5e-5, log=True),
+            "num_train_epochs": trial.suggest_int("num_train_epochs", 1, 3),
+            "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [8, 16]),
         },
-        model_init=model_init,
     )
 
     export_data_to_json(best_run.hyperparameters, "bert_best_params", is_json=True)

@@ -19,6 +19,6 @@ def main():
         print('With best params:')
         print("TFIDF Prediction:", predict_sentiment_tfidf(review, with_params=True))
         print("BoW Prediction:", predict_sentiment_bow(review, imdb_vocab, with_params=True))
-
+        print("BERT Prediction:", predict_sentiment_bert(review, with_params=True))
 main()
 
