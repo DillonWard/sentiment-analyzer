@@ -80,9 +80,15 @@ coverage.xml
 *~
 
 # files are too big for github
-# BERT model files
-bert_model/
-bert_model_with_params/
+models/bert_model/
+models/bert_model_with_params/
+models/bert_finetuned/
+models/bert_finetuned_with_params/
 # Compressed model files
-bert_model.tar.gz
-bert_model_with_params.tar.gz
+models/bert_model.tar.gz
+models/bert_model_with_params.tar.gz
+models/bert_finetuned.tar.gz
+models/bert_finetuned_with_params.tar.gz
+# Any large model files
+models/*.safetensors
+models/*.bin
