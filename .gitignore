@@ -79,6 +79,10 @@ coverage.xml
 *.swo
 *~
 
+# files are too big for github
 # BERT model files
 bert_model/
 bert_model_with_params/
+# Compressed model files
+bert_model.tar.gz
+bert_model_with_params.tar.gz

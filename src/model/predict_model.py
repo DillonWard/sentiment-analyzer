@@ -46,43 +46,25 @@ def text_to_bow_dict(text, vocab_list):
 
 
 def predict_sentiment_bert(text, with_params=False):
-    import tempfile
-    import tarfile
-    from pathlib import Path
     from src.common.utils import get_project_root
+    import os
     
-    # Determine which tar.gz file to use
     model_name = "bert_model_with_params" if with_params else "bert_model"
-    archive_path = os.path.join(get_project_root(), "models", f"{model_name}.tar.gz")
+    model_dir = os.path.join(get_project_root(), "models", model_name)
     
-    if not os.path.exists(archive_path):
-        raise ValueError(f"BERT model tar.gz not found: {archive_path}. Train the model first.")
+    if not os.path.exists(model_dir):
+        raise ValueError(f"BERT model directory not found: {model_dir}. Train the model first.")
     
-    # Extract temporarily and load
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+        probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+        sentiment = torch.argmax(probs, dim=1).item()
+        confidence = probs.max().item()
         
-        with tarfile.open(archive_path, 'r:gz') as tar:
-            tar.extractall(temp_path)
-        
-        # Find the extracted model directory
-        extracted_dirs = [d for d in temp_path.iterdir() if d.is_dir()]
-        
-        if not extracted_dirs:
-            raise ValueError(f"No directory found in archive: {archive_path}")
-        
-        # Use the first directory found
-        extracted_model_path = extracted_dirs[0]
-        
-        # Load model and tokenizer from extracted directory
-        tokenizer = AutoTokenizer.from_pretrained(str(extracted_model_path))
-        model = AutoModelForSequenceClassification.from_pretrained(str(extracted_model_path))
-        
-        # Make prediction
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-        with torch.no_grad():
-            outputs = model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            sentiment = torch.argmax(probs, dim=1).item()
-        
-        return sentiment, probs.squeeze().tolist()
+        sentiment_label = "positive" if sentiment == 1 else "negative"
+        return f"{sentiment_label} (confidence: {confidence:.2%})"
