@@ -46,13 +46,43 @@ def text_to_bow_dict(text, vocab_list):
 
 
 def predict_sentiment_bert(text, with_params=False):
-    from src.model.train_model import import_finetuned_bert
-    model, tokenizer = import_finetuned_bert(with_params=with_params)
-    if model is None or tokenizer is None:
-        raise ValueError("BERT model not found. Train the model first.")
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    with torch.no_grad():
-        outputs = model(**inputs)
-        probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-        sentiment = torch.argmax(probs, dim=1).item()
-    return sentiment, probs.squeeze().tolist()
+    import tempfile
+    import tarfile
+    from pathlib import Path
+    from src.common.utils import get_project_root
+    
+    # Determine which tar.gz file to use
+    model_name = "bert_model_with_params" if with_params else "bert_model"
+    archive_path = os.path.join(get_project_root(), "models", f"{model_name}.tar.gz")
+    
+    if not os.path.exists(archive_path):
+        raise ValueError(f"BERT model tar.gz not found: {archive_path}. Train the model first.")
+    
+    # Extract temporarily and load
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        
+        with tarfile.open(archive_path, 'r:gz') as tar:
+            tar.extractall(temp_path)
+        
+        # Find the extracted model directory
+        extracted_dirs = [d for d in temp_path.iterdir() if d.is_dir()]
+        
+        if not extracted_dirs:
+            raise ValueError(f"No directory found in archive: {archive_path}")
+        
+        # Use the first directory found
+        extracted_model_path = extracted_dirs[0]
+        
+        # Load model and tokenizer from extracted directory
+        tokenizer = AutoTokenizer.from_pretrained(str(extracted_model_path))
+        model = AutoModelForSequenceClassification.from_pretrained(str(extracted_model_path))
+        
+        # Make prediction
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            sentiment = torch.argmax(probs, dim=1).item()
+        
+        return sentiment, probs.squeeze().tolist()

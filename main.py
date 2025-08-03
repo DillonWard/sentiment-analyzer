@@ -22,3 +22,6 @@ def main():
         print("BERT Prediction:", predict_sentiment_bert(review, with_params=True))
 main()
 
+
+
+

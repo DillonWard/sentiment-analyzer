@@ -78,3 +78,7 @@ coverage.xml
 *.swp
 *.swo
 *~
+
+# BERT model files
+bert_model/
+bert_model_with_params/

@@ -168,22 +168,26 @@ def tune_bow_logreg(X_train, y_train):
     return bow_best_params
 
 
-def import_finetuned_bert(with_params=False):
+def import_model_bert(with_params=False):
     model_dir = os.path.join(
         get_project_root(),
         "models",
-        "bert_finetuned_with_params" if with_params else "bert_finetuned",
+        "bert_model_with_params" if with_params else "bert_model",
     )
+    
     if not os.path.exists(model_dir):
         return None, None
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
-    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
-    return model, tokenizer
-
-
+    
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+        return model, tokenizer
+    except Exception:
+        return None, None
+    
 # Function to finetune a BERT model using the Hugging Face Transformers library
 def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
-    model, tokenizer = import_finetuned_bert()
+    model, tokenizer = import_model_bert()
     if model is None or tokenizer is None:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         train_dataset = prepare_bert_dataset(train_archive)
@@ -204,7 +208,7 @@ def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
         model = AutoModelForSequenceClassification.from_pretrained(
             model_name, num_labels=2
         )
-        bert_model_dir = os.path.join(get_project_root(), "models", "bert_finetuned")
+        bert_model_dir = os.path.join(get_project_root(), "models", "bert_model")
         training_args = TrainingArguments(
             output_dir=bert_model_dir,
             num_train_epochs=2,
@@ -224,7 +228,7 @@ def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
         model.save_pretrained(bert_model_dir)
         tokenizer.save_pretrained(bert_model_dir)
 
-    model_with_params, tokenizer_with_params = import_finetuned_bert(with_params=True)
+    model_with_params, tokenizer_with_params = import_model_bert(with_params=True)
     if model_with_params is None or tokenizer_with_params is None:
         best_params = tune_bert_hyperparameters(train_archive, test_archive, model_name)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -251,7 +255,7 @@ def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
             model_name, num_labels=2
         )
         bert_model_dir_with_params = os.path.join(
-            get_project_root(), "models", "bert_finetuned_with_params"
+            get_project_root(), "models", "bert_model_with_params"
         )
         training_args = TrainingArguments(
             output_dir=bert_model_dir_with_params,
