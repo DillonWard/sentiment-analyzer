@@ -10,7 +10,7 @@ def get_project_root():
 
 
 def get_processed_path(file_name, is_json=False):
-    ext = '.json' if is_json else '.gz'
+    ext = ".json" if is_json else ".gz"
     if not file_name.endswith(ext):
         file_name += ext
     return os.path.join(get_project_root(), "data", "processed", file_name)
@@ -19,10 +19,10 @@ def get_processed_path(file_name, is_json=False):
 def export_data_to_json(data, file_name, is_json=False):
     path = get_processed_path(file_name, is_json)
     if is_json:
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     else:
-        with gzip.open(path, 'wt', encoding='utf-8') as f:
+        with gzip.open(path, "wt", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
 
@@ -31,10 +31,10 @@ def import_processed_json(file_name, is_json=False):
     if not os.path.exists(path):
         return None
     if is_json:
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     else:
-        with gzip.open(path, 'rt', encoding='utf-8') as f:
+        with gzip.open(path, "rt", encoding="utf-8") as f:
             return json.load(f)
 
 

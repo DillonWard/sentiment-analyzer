@@ -11,4 +11,8 @@ torch==2.7.1
 transformers==4.54.1
 datasets==4.0.0
 transformers[torch]==4.54.1
-protobuf
+protobuf==6.31.1
+pytest==8.4.1
+pytest-cov==6.2.1
+pre-commit==4.3.0
+black

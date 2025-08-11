@@ -65,7 +65,8 @@ def train_tfidf_logreg(test_data, train_data, vocab_list, imdb_expected_rating=N
     print(classification_report(y_test, y_pred))
 
 
-# Function to train a Bag-of-Words model using Logistic Regression, manually parsing the BOW lines
+# Function to train a Bag-of-Words model using Logistic Regression,
+# manually parsing the BOW lines
 def train_bow_logreg(test_archive, train_archive, vocab_list):
     vocab_size = len(vocab_list)
 
@@ -105,7 +106,6 @@ def train_bow_logreg(test_archive, train_archive, vocab_list):
 
 
 def tune_tfidf_logreg(X_train, y_train, vocab_list):
-
     best_params = import_processed_json("tfidf_best_params.json", is_json=True)
     if best_params:
         return best_params
@@ -174,17 +174,18 @@ def import_model_bert(with_params=False):
         "models",
         "bert_model_with_params" if with_params else "bert_model",
     )
-    
+
     if not os.path.exists(model_dir):
         return None, None
-    
+
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_dir)
         model = AutoModelForSequenceClassification.from_pretrained(model_dir)
         return model, tokenizer
     except Exception:
         return None, None
-    
+
+
 # Function to finetune a BERT model using the Hugging Face Transformers library
 def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
     model, tokenizer = import_model_bert()
@@ -277,7 +278,9 @@ def finetune_bert(train_archive, test_archive, model_name="bert-base-uncased"):
         tokenizer.save_pretrained(bert_model_dir_with_params)
 
 
-def tune_bert_hyperparameters(train_archive, test_archive, model_name="bert-base-uncased"):
+def tune_bert_hyperparameters(
+    train_archive, test_archive, model_name="bert-base-uncased"
+):
     best_params = import_processed_json("bert_best_params.json", is_json=True)
     if best_params:
         return best_params
@@ -305,10 +308,12 @@ def tune_bert_hyperparameters(train_archive, test_archive, model_name="bert-base
         logging_steps=50,
         report_to=[],
     )
+
     def model_init():
         return AutoModelForSequenceClassification.from_pretrained(
             model_name, num_labels=2
         )
+
     trainer = Trainer(
         args=training_args,
         train_dataset=train_dataset,
@@ -322,7 +327,9 @@ def tune_bert_hyperparameters(train_archive, test_archive, model_name="bert-base
         hp_space=lambda trial: {
             "learning_rate": trial.suggest_float("learning_rate", 2e-5, 5e-5, log=True),
             "num_train_epochs": trial.suggest_int("num_train_epochs", 1, 3),
-            "per_device_train_batch_size": trial.suggest_categorical("per_device_train_batch_size", [8, 16]),
+            "per_device_train_batch_size": trial.suggest_categorical(
+                "per_device_train_batch_size", [8, 16]
+            ),
         },
     )
 

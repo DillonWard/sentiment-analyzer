@@ -82,3 +82,5 @@ coverage.xml
 # files are too big for github
 models/bert_model/
 models/bert_model_with_params/
+
+.pytest_cache/
