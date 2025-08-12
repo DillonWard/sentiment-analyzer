@@ -231,7 +231,3 @@ class TestPredictModel(unittest.TestCase):
         result = text_to_bow_dict(text, different_vocab)
         expected = {0: 1, 1: 1}
         self.assertEqual(result, expected)
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
